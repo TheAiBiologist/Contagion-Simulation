@@ -1,5 +1,6 @@
 import pygame
 import torch
+import matplotlib.pyplot as plt
 
 # Inicializar Pygame
 pygame.init()
@@ -8,12 +9,16 @@ pygame.init()
 SCREEN_WIDTH, SCREEN_HEIGHT = 1000, 1000
 INITIAL_HEALTHY = 900  # Número inicial de personas sanas
 INITIAL_INFECTED = 100  # Número inicial de personas infectadas
-MAX_PEOPLE = 10000
-STEP_STD = 5
-REPRODUCTION_PROB = 0.01
+MAX_PEOPLE = 15000
+STEP_STD = 10
+REPRODUCTION_PROB = 0.02
 DEATH_PROB = 0.01
-INFECTION_RADIUS = 30
-INFECTION_PROB = 0.02  # Probabilidad de contagio
+INFECTION_RADIUS = 40
+INFECTION_PROB = 0.05  # Probabilidad de contagio
+
+# Inicializar la fuente de Pygame
+pygame.font.init()
+FONT = pygame.font.SysFont(None, 30)
 
 # Configuración de la pantalla
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -27,6 +32,10 @@ states = torch.zeros(total_people, device="cuda", dtype=torch.int32)  # 0 para s
 # Marcar los primeros `INITIAL_INFECTED` como enfermos
 states[:INITIAL_INFECTED] = 1
 
+# Almacenar la evolución de los contadores
+healthy_counts = []
+infected_counts = []
+
 # Bucle principal
 running = True
 clock = pygame.time.Clock()
@@ -35,6 +44,7 @@ while running:
     # Manejar eventos
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
+            print("Simulación terminada por cierre de ventana")
             running = False
 
     # Calcular desplazamientos aleatorios usando PyTorch (en la GPU)
@@ -76,10 +86,17 @@ while running:
     num_healthy = (states == 0).sum().item()
     num_infected = (states == 1).sum().item()
 
-    # Detener la simulación si se alcanza el número máximo de personas
+    # Guardar los contadores para los gráficos
+    healthy_counts.append(num_healthy)
+    infected_counts.append(num_infected)
+
+    # Detener la simulación si se alcanzan las condiciones de terminación
     if positions.size(0) >= MAX_PEOPLE:
         print("OVERPOPULATION")
         print(f"Sanos: {num_healthy}, Infectados: {num_infected}")
+        break
+    if num_healthy + num_infected == 0:
+        print("Toda la población ha muerto")
         break
 
     # Dibujar en la pantalla
@@ -90,9 +107,23 @@ while running:
         color = (0, 255, 0) if state == 0 else (255, 0, 0)
         pygame.draw.circle(screen, color, (int(pos[0]), int(pos[1])), 2)
 
+    # Mostrar el contador
+    counter_text = FONT.render(f"Sanos: {num_healthy} | Infectados: {num_infected}", True, (255, 255, 255))
+    screen.blit(counter_text, (10, 10))
+
     # Actualizar la pantalla
     pygame.display.flip()
     clock.tick(60)
 
 # Salir de Pygame
 pygame.quit()
+
+# Generar gráficos al final de la simulación
+plt.figure(figsize=(10, 5))
+plt.plot(healthy_counts, label="Sanos", color="green")
+plt.plot(infected_counts, label="Infectados", color="red")
+plt.xlabel("Tiempo (pasos)")
+plt.ylabel("Cantidad")
+plt.title("Evolución de Sanos e Infectados")
+plt.legend()
+plt.show()
