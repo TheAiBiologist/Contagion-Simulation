@@ -10,11 +10,15 @@ SCREEN_WIDTH, SCREEN_HEIGHT = 1000, 1000
 INITIAL_HEALTHY = 900  # Número inicial de personas sanas
 INITIAL_INFECTED = 100  # Número inicial de personas infectadas
 MAX_PEOPLE = 15000
-STEP_STD = 10
+
+# Definir STEP_STD para sanos e infectados
+STEP_STD_HEALTHY = 5
+STEP_STD_INFECTED = 1  # Puedes ajustar este valor
+
 REPRODUCTION_PROB = 0.02
-DEATH_PROB = 0.01
-INFECTION_RADIUS = 40
-INFECTION_PROB = 0.05  # Probabilidad de contagio
+DEATH_PROB = 0.02
+INFECTION_RADIUS = 20
+INFECTION_PROB = 0.04  # Probabilidad de contagio
 
 # Inicializar la fuente de Pygame
 pygame.font.init()
@@ -47,8 +51,12 @@ while running:
             print("Simulación terminada por cierre de ventana")
             running = False
 
-    # Calcular desplazamientos aleatorios usando PyTorch (en la GPU)
-    displacements = torch.normal(mean=0.0, std=STEP_STD, size=(positions.size(0), 2), device="cuda")
+    # Calcular desplazamientos aleatorios con diferente STEP_STD
+    displacements_healthy = torch.normal(mean=0.0, std=STEP_STD_HEALTHY, size=(positions.size(0), 2), device="cuda")
+    displacements_infected = torch.normal(mean=0.0, std=STEP_STD_INFECTED, size=(positions.size(0), 2), device="cuda")
+
+    # Aplicar los desplazamientos según el estado
+    displacements = torch.where(states[:, None] == 0, displacements_healthy, displacements_infected)
     positions += displacements
 
     # Mantener posiciones dentro de los límites de la pantalla
